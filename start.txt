@@ -1,0 +1,87 @@
+CQRS — учебный проект на Spring Boot + Java
+============================================
+
+Что такое CQRS
+--------------
+
+CQRS = Command Query Responsibility Segregation.
+
+Смысл: команды и запросы обрабатываются отдельно:
+
+- Команда (`Command`) меняет состояние системы.
+- Запрос (`Query`) только читает данные.
+
+В обычной CRUD-архитектуре одна и та же модель часто используется и для записи, и для чтения. В CQRS они разделяются: write side и read side работают независимо.
+
+В этом демо
+-----------
+
+- `TaskCommandService` — write side. Он принимает команды на создание/завершение задач и меняет write-модель.
+- `TaskProjection` — read side. Он строит `TaskReadModel` для запроса списка задач и одного элемента.
+- Команды вызывают события (`TaskCreatedEvent`, `TaskCompletedEvent`), а projection их принимает.
+
+Это минимальный пример и не является Event Sourcing. События здесь просто отражают изменения и используются для обновления read model. Хранилище в памяти — только для обучения.
+
+Структура проекта
+-----------------
+
+- `CqrsDemoApplication.java` — точка запуска Spring Boot.
+- `TaskController.java` — REST API команд и запросов.
+- `TaskCommandService.java` — логика команд.
+- `TaskProjection.java` — read model и проекция.
+- `TaskReadModel.java` — сокращённая модель для чтения.
+- `TaskCreatedEvent.java`, `TaskCompletedEvent.java` — события команд.
+- `ApiExceptionHandler.java` — обработчик ошибок HTTP 400/404.
+- `CqrsFlowTest.java` — тест сценария команда → событие → проекция.
+
+Запуск
+------
+
+Требуются JDK 17+ и Gradle 8.x.
+
+```bash
+gradle bootRun
+```
+
+Сервер работает на `http://localhost:8080`.
+
+Проверка API
+------------
+
+Создать задачу:
+
+```bash
+curl -i -X POST http://localhost:8080/api/commands/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Изучить CQRS"}'
+```
+
+Получить список:
+
+```bash
+curl http://localhost:8080/api/queries/tasks
+```
+
+Получить одну задачу:
+
+```bash
+curl http://localhost:8080/api/queries/tasks/<task-id>
+```
+
+Завершить задачу:
+
+```bash
+curl -i -X POST http://localhost:8080/api/commands/tasks/<task-id>/complete
+```
+
+Тесты:
+
+```bash
+gradle test
+gradle test --tests 'ru.demo.cqrs.CqrsFlowTest'
+```
+
+Области применения и ограничения
+--------------------------------
+
+CQRS полезен, когда write и read потоки имеют разные требования по структуре или масштабированию. Он может быть излишним для обычного CRUD. В этом демо оба store находятся в памяти, обновление проекции синхронное, а Event Sourcing и внешняя инфраструктура не используются.
